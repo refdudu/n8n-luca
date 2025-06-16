@@ -1,0 +1,51 @@
+# render.yaml
+services:
+  # 1. O Serviço Web que executa o n8n
+  - type: web
+    runtime: node
+    name: n8n
+    # env: docker # Usa o Dockerfile do nosso repositório
+    plan: starter # Escolha o plano que se adequa à sua necessidade
+    healthCheckPath: /healthz # Rota para o Render verificar se a aplicação está saudável
+    
+    # 2. O Disco Persistente para salvar a configuração e a chave de criptografia
+    # disks:
+
+    #   - name: n8n-data
+    #     mountPath: /home/node/.n8n # Monta o disco no diretório de dados do n8n
+    #     sizeGB: 1 # 1GB é suficiente para começar
+
+    # 3. Variáveis de Ambiente Essenciais
+    envVars:
+      # Pega a URL do banco de dados criado abaixo
+      - key: DB_URL
+        fromDatabase:
+          name: n8n-postgres
+          property: connectionString
+      
+      # Pega a URL pública do nosso serviço web e a define para os webhooks
+      - key: WEBHOOK_URL
+        fromService:
+          type: web
+          name: n8n
+          property: url
+
+      # IMPORTANTE: Chave para criptografar suas credenciais.
+      # Defina esta chave manualmente no painel do Render!
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true # O Render irá gerar um valor, mas é RECOMENDADO que você crie o seu.
+
+      # Outras configurações recomendadas para produção
+      - key: N8N_EMAIL_MODE
+        value: smtp
+      - key: NODE_ENV
+        value: production
+      - key: GENERIC_TIMEZONE
+        value: America/Sao_Paulo # Defina seu fuso horário
+
+# 4. O Banco de Dados Gerenciado para salvar workflows e execuções
+databases:
+  - name: n8n-postgres
+    databaseName: n8n
+    plan: free # O plano gratuito é ótimo para começar
+    ipAllowList: [] # Permite acesso de qualquer lugar (necessário para o serviço web)
